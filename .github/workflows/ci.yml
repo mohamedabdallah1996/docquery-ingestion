@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-type-test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Format check
+        run: uv run ruff format --check .
+
+      - name: Type check
+        run: uv run mypy src
+
+      - name: Test
+        run: uv run pytest
+
+      - name: Build wheel
+        run: ./build.sh --skip-deps
+
+      - name: Smoke-test the built wheel in a clean environment
+        run: |
+          uv venv /tmp/wheel-check
+          # docquery-core's source isn't part of the wheel's own metadata --
+          # [tool.uv.sources] overrides are a uv-project resolution-time
+          # concept, not baked into a built wheel -- so it has to be
+          # supplied explicitly here too, same as any real installer would.
+          uv pip install --python /tmp/wheel-check/bin/python dist/*.whl \
+            "docquery-core @ git+https://github.com/mohamedabdallah1996/docquery-core"
+          /tmp/wheel-check/bin/python -c "import docquery_ingestion; print(docquery_ingestion.build_ingestor)"
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docquery-ingestion-wheel
+          path: dist/*.whl
