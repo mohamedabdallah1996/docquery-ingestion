@@ -1,0 +1,52 @@
+[project]
+name = "docquery-ingestion"
+version = "0.1.0"
+description = "Handles document ingestion, including PDF validation, registration, metadata extraction, and source artifact management"
+readme = "README.md"
+authors = [
+    { name = "Mohamed Abdullah", email = "mohamed.abdullah9618@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "loguru>=0.7.3",
+    "docquery-core",
+    "httpx>=0.28.1",
+    "pypdfium2>=4.30.0",
+    "pillow>=11.0.0",
+    "tenacity>=9.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=0.25.0",
+    "ruff>=0.8.0",
+    "mypy>=1.14.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.10,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+docquery-core = { git = "https://github.com/mohamedabdallah1996/docquery-core" }
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "pypdfium2.*"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
