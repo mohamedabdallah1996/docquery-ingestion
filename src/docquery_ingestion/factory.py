@@ -13,13 +13,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from docquery_ingestion.base import BaseIngestor
 from docquery_ingestion.clients.glm_ocr import LlamaCppOCRClient
 from docquery_ingestion.config import GLMOCRConfig
 from docquery_ingestion.glm_ocr_ingestor import GLMOCRIngestor
 
 
-def build_ingestor(config: dict[str, Any], *, ocr_service_url: str) -> BaseIngestor:
+def build_ingestor(config: dict[str, Any], *, ocr_service_url: str) -> GLMOCRIngestor:
     """Build the configured ingestor from the orchestrator's full
     `{"ingestion": {...}}`-shaped config."""
     parsed = GLMOCRConfig.model_validate(config["ingestion"])
