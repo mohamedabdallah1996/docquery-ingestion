@@ -15,7 +15,7 @@ from typing import Any
 
 from docquery_ingestion.clients.glm_ocr import LlamaCppOCRClient
 from docquery_ingestion.config import GLMOCRConfig
-from docquery_ingestion.glm_ocr_ingestor import GLMOCRIngestor
+from docquery_ingestion.ingestor import GLMOCRIngestor
 
 
 def build_ingestor(config: dict[str, Any], *, ocr_service_url: str) -> GLMOCRIngestor:

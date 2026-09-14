@@ -2,7 +2,7 @@
 
 This is a thin HTTP client; there is no custom OCR server here. Requests are
 retried at the page level, not the whole document. See
-``docquery_ingestion.base.BaseIngestor``.
+``docquery_ingestion.ingestor.GLMOCRIngestor``.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from docquery_ingestion.clients.ocr_client import PageOCRResult
+from docquery_ingestion.clients.base_client import PageOCRResult
 from docquery_ingestion.utils.normalizer import clean_markdown
 
 _RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}

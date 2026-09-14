@@ -1,5 +1,5 @@
 from docquery_ingestion.factory import build_ingestor
-from docquery_ingestion.glm_ocr_ingestor import GLMOCRIngestor
+from docquery_ingestion.ingestor import GLMOCRIngestor
 
 
 def test_build_ingestor_from_the_documented_config_shape() -> None:

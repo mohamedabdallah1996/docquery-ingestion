@@ -1,14 +1,14 @@
 """GLM-OCR-based ingestion: validate a PDF, rasterize each page, send it to
-the OCR service via OCRClient, and assemble the normalized result.
+the OCR service via OCRBaseClient, and assemble the normalized result.
 
 One concrete class, no strategy hierarchy -- v1 has exactly one ingestion
 approach (GLM-OCR). If a second one (e.g. text-extraction for digitally
 native PDFs) is ever actually built, factor the shared sequence out into a
 base class *then*, when there's a second real implementation to justify it.
 
-The OCR backend itself stays swappable independently of that: OCRClient is
-still a Protocol, injected here, not something this class owns -- see
-clients/ocr_client.py for why that boundary is justified regardless of how
+The OCR backend itself stays swappable independently of that: OCRBaseClient
+is still a Protocol, injected here, not something this class owns -- see
+clients/base_client.py for why that boundary is justified regardless of how
 many ingestion strategies exist.
 """
 
@@ -19,7 +19,7 @@ import asyncio
 from docquery_core import ParsedDocument, ParsedPage
 from loguru import logger
 
-from docquery_ingestion.clients.ocr_client import OCRClient
+from docquery_ingestion.clients.base_client import OCRBaseClient
 from docquery_ingestion.config import GLMOCRConfig
 from docquery_ingestion.utils.normalizer import assemble_parsed_document
 from docquery_ingestion.utils.rendering import get_page_count, render_page
@@ -27,7 +27,7 @@ from docquery_ingestion.utils.validation import validate_pdf
 
 
 class GLMOCRIngestor:
-    def __init__(self, ocr_client: OCRClient, config: GLMOCRConfig) -> None:
+    def __init__(self, ocr_client: OCRBaseClient, config: GLMOCRConfig) -> None:
         self._ocr_client = ocr_client
         self._config = config
 

@@ -21,5 +21,5 @@ class PageOCRResult(BaseModel):
 
 
 @runtime_checkable
-class OCRClient(Protocol):
+class OCRBaseClient(Protocol):
     async def extract_page(self, image_bytes: bytes, *, page_number: int) -> PageOCRResult: ...

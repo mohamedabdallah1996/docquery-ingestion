@@ -1,6 +1,6 @@
-from docquery_ingestion.clients.ocr_client import PageOCRResult
+from docquery_ingestion.clients.base_client import PageOCRResult
 from docquery_ingestion.config import GLMOCRConfig
-from docquery_ingestion.glm_ocr_ingestor import GLMOCRIngestor
+from docquery_ingestion.ingestor import GLMOCRIngestor
 from docquery_ingestion.utils.exceptions import InvalidPDFError
 
 
