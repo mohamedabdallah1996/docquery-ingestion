@@ -74,6 +74,51 @@ async def test_malformed_response_degrades_gracefully_without_retrying() -> None
     assert result.error is not None
 
 
+async def test_empty_choices_list_degrades_gracefully() -> None:
+    """A plausible malformed response (valid JSON, empty `choices`) must not
+    crash the whole document via an uncaught IndexError."""
+
+    def empty_choices(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"choices": []})
+
+    client = _client(empty_choices)
+    result = await client.extract_page(b"image", page_number=1)  # must not raise
+
+    assert result.markdown == ""
+    assert result.error is not None
+
+
+async def test_non_string_content_degrades_gracefully_not_silently_stringified() -> None:
+    """A valid-shaped response with `content: null` must not silently become
+    the literal text "None" -- it should be treated as a failure."""
+
+    def null_content(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"choices": [{"message": {"content": None}}]})
+
+    client = _client(null_content)
+    result = await client.extract_page(b"image", page_number=1)
+
+    assert result.markdown == ""
+    assert result.error is not None
+    assert "None" not in result.markdown
+
+
+async def test_client_error_status_is_not_retried() -> None:
+    """400/401/403/404 are deterministic -- retrying them wastes attempts on
+    something that can't succeed. Only 429/5xx are worth retrying."""
+    calls = {"n": 0}
+
+    def bad_request(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(400)
+
+    client = _client(bad_request, retry_max_attempts=5)
+    result = await client.extract_page(b"image", page_number=1)
+
+    assert calls["n"] == 1  # no retries attempted
+    assert result.error is not None
+
+
 async def test_sends_the_documented_request_shape() -> None:
     captured: dict[str, object] = {}
 
