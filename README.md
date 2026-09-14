@@ -107,6 +107,28 @@ this package's own checkout has no sibling `docquery-core` directory to point a 
 The orchestrator overrides this the same way for its own reasons; see
 [`docquery`'s README](https://github.com/mohamedabdallah1996/DocQuery) for that side of it.
 
+### Running the OCR service
+
+This repo is self-contained: `docker-compose.yml` + `services/ocr/` run GLM-OCR locally via
+the official [`llama.cpp`](https://github.com/ggml-org/llama.cpp) CUDA server image -- no
+custom serving code, nothing to install by hand. Requires an NVIDIA GPU and the NVIDIA
+container toolkit.
+
+```bash
+docker compose up ocr
+```
+
+First run downloads the model (a few hundred MB); subsequent runs reuse it via the
+`glm-ocr-cache` volume. Once it's up, `LlamaCppOCRClient(...).verify()` confirms it's actually
+ready (checks llama.cpp's own `/health`, which reflects GPU/model-load failures on the server
+side) before you send it real requests -- called explicitly, not automatically at construction.
+
+Manual single-page smoke test against a real PDF, once the service is running:
+
+```bash
+uv run python -m docquery_ingestion.clients.glm_ocr http://localhost:8080 /path/to/file.pdf
+```
+
 ## Testing
 
 ```bash

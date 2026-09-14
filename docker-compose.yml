@@ -1,0 +1,27 @@
+services:
+  ocr:
+    build:
+      context: ./services/ocr
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - glm-ocr-cache:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      # llama.cpp's server exposes /health natively. If the server-cuda
+      # image turns out not to have curl, swap this for a wget-based check.
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 300s # generous: first run downloads the model
+
+volumes:
+  glm-ocr-cache:
