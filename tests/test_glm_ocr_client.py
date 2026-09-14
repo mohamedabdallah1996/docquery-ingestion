@@ -1,6 +1,8 @@
 import httpx
+import pytest
 
 from docquery_ingestion.clients.glm_ocr import LlamaCppOCRClient
+from docquery_ingestion.utils.exceptions import OCRServiceError
 
 
 def _client(handler, *, retry_max_attempts: int = 3) -> LlamaCppOCRClient:
@@ -137,3 +139,38 @@ async def test_sends_the_documented_request_shape() -> None:
     assert message["role"] == "user"
     types = {part["type"] for part in message["content"]}
     assert types == {"image_url", "text"}
+
+
+async def test_verify_succeeds_when_the_service_reports_ready() -> None:
+    def healthy(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"status": "ok"})
+
+    client = _client(healthy)
+    await client.verify()  # must not raise
+
+
+async def test_verify_raises_when_the_service_is_unreachable() -> None:
+    def unreachable(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
+
+    client = _client(unreachable)
+    with pytest.raises(OCRServiceError, match="cannot reach"):
+        await client.verify()
+
+
+async def test_verify_raises_when_the_model_is_still_loading() -> None:
+    def loading(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, json={"status": "loading model"})
+
+    client = _client(loading)
+    with pytest.raises(OCRServiceError, match="not ready"):
+        await client.verify()
+
+
+async def test_verify_raises_on_an_unexpected_ready_body() -> None:
+    def wrong_shape(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"unexpected": "shape"})
+
+    client = _client(wrong_shape)
+    with pytest.raises(OCRServiceError, match="not ready"):
+        await client.verify()

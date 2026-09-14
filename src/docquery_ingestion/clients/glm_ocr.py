@@ -20,6 +20,7 @@ from tenacity import (
 )
 
 from docquery_ingestion.clients.base_client import PageOCRResult
+from docquery_ingestion.utils.exceptions import OCRServiceError
 from docquery_ingestion.utils.normalizer import clean_markdown
 
 _RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
@@ -96,6 +97,31 @@ class LlamaCppOCRClient:
     async def aclose(self) -> None:
         """Close the underlying HTTP client and its connection pool."""
         await self._http_client.aclose()
+
+    async def verify(self) -> None:
+        """Confirm the OCR service is actually reachable and ready.
+
+        Checks llama.cpp's own /health endpoint, which reports an error
+        status if the server failed to initialize (no GPU found, model
+        failed to load, ...) -- catching that from the one process that
+        actually knows, rather than guessing at hardware from here. Not
+        called automatically from __init__ (which can't be async, and
+        shouldn't perform I/O even if it could) -- call this explicitly
+        wherever "fail fast and clearly if the service isn't up" matters:
+        application startup, or before a manual smoke test.
+        """
+        try:
+            response = await self._http_client.get(f"{self._service_url}/health")
+        except (httpx.TimeoutException, httpx.TransportError) as exc:
+            raise OCRServiceError(
+                f"cannot reach OCR service at {self._service_url}: {exc}"
+            ) from exc
+
+        if response.status_code != 200 or response.json().get("status") != "ok":
+            raise OCRServiceError(
+                f"OCR service at {self._service_url} is not ready "
+                f"(HTTP {response.status_code}, body={response.text!r})"
+            )
 
     @staticmethod
     def _log_retry(retry_state: RetryCallState) -> None:
@@ -189,3 +215,38 @@ class LlamaCppOCRClient:
         if not isinstance(content, str):
             raise TypeError(f"expected a string 'content', got {type(content).__name__}")
         return content
+
+
+if __name__ == "__main__":
+    import asyncio
+    import sys
+
+    from docquery_ingestion.utils.rendering import render_page
+
+    async def main() -> None:
+        if len(sys.argv) not in (3, 4):
+            print(
+                "Usage: python -m docquery_ingestion.clients.glm_ocr "
+                "<service_url> <pdf_path> [page_number]"
+            )
+            sys.exit(1)
+
+        service_url = sys.argv[1]
+        pdf_path = sys.argv[2]
+        page_number = int(sys.argv[3]) if len(sys.argv) == 4 else 1
+
+        with open(pdf_path, "rb") as f:
+            pdf_bytes = f.read()
+        image_bytes = render_page(pdf_bytes, page_number - 1, dpi=200)
+
+        async with LlamaCppOCRClient(service_url) as ocr_client:
+            try:
+                await ocr_client.verify()
+            except OCRServiceError as exc:
+                print(f"OCR service not ready: {exc}")
+                sys.exit(1)
+
+            result = await ocr_client.extract_page(image_bytes, page_number=page_number)
+            print(result.model_dump_json(indent=2))
+
+    asyncio.run(main())
