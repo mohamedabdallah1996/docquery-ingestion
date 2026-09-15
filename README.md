@@ -5,8 +5,9 @@
 ## Overview
 
 Takes raw PDF bytes and a document ID, validates and rasterizes the PDF, sends each page
-through GLM-OCR (served by [`llama.cpp`](https://github.com/mohamedabdallah1996/DocQuery/tree/master/services/ocr)),
-and returns a [`docquery_core.ParsedDocument`](https://github.com/mohamedabdallah1996/docquery-core) --
+through GLM-OCR (served locally by [`llama.cpp`](https://github.com/ggml-org/llama.cpp) --
+see [Running the OCR service](#running-the-ocr-service) below), and returns a
+[`docquery_core.ParsedDocument`](https://github.com/mohamedabdallah1996/docquery-core) --
 the shared type that downstream chunking, embedding, and generation submodules consume. No
 submodule-to-submodule calls: this package takes input, produces output, nothing more.
 
@@ -60,19 +61,20 @@ stays a single-branch factory until a second real strategy exists to select betw
 
 ```
 src/docquery_ingestion/
-  base.py              # BaseIngestor -- the template method
-  glm_ocr_ingestor.py    # GLMOCRIngestor -- the only concrete strategy today
+  ingestor.py            # GLMOCRIngestor -- one concrete ingestor, no strategy hierarchy
   config.py                # IngestionConfig (common) / GLMOCRConfig (OCR-specific)
   factory.py                 # build_ingestor() -- resolves config -> a ready ingestor
   clients/
-    ocr_client.py               # OCRClient Protocol + PageOCRResult
-    glm_ocr.py                    # LlamaCppOCRClient -- the only OCRClient today
+    base_client.py               # OCRBaseClient Protocol + PageOCRResult
+    glm_ocr.py                     # LlamaCppOCRClient -- the only OCRBaseClient today
   utils/
-    validation.py                   # PDF structural validation, always run
-    rendering.py                      # PDF page -> JPEG bytes (pypdfium2)
-    normalizer.py                       # OCR response -> ParsedPage/ParsedDocument
-    exceptions.py                         # InvalidPDFError, OCRServiceError
-tests/                                      # one test module per src file
+    validation.py                    # PDF structural validation, always run
+    rendering.py                       # PDF page -> JPEG bytes (pypdfium2)
+    normalizer.py                        # OCR response -> ParsedPage/ParsedDocument
+    exceptions.py                          # InvalidPDFError, OCRServiceError
+tests/                                       # one test module per src file
+Dockerfile               # the OCR service -- official llama.cpp image, no custom serving code
+docker-compose.yml          # `docker compose up` runs it, with the GPU/volume/healthcheck config
 ```
 
 ## Getting Started
@@ -109,13 +111,13 @@ The orchestrator overrides this the same way for its own reasons; see
 
 ### Running the OCR service
 
-This repo is self-contained: `docker-compose.yml` + `services/ocr/` run GLM-OCR locally via
-the official [`llama.cpp`](https://github.com/ggml-org/llama.cpp) CUDA server image -- no
-custom serving code, nothing to install by hand. Requires an NVIDIA GPU and the NVIDIA
-container toolkit.
+This repo is self-contained: `Dockerfile` + `docker-compose.yml` run GLM-OCR locally via the
+official [`llama.cpp`](https://github.com/ggml-org/llama.cpp) CUDA server image -- no custom
+serving code, nothing to install by hand. Requires an NVIDIA GPU and the NVIDIA container
+toolkit. Just one service, so no need to name it:
 
 ```bash
-docker compose up ocr
+docker compose up
 ```
 
 First run downloads the model (a few hundred MB); subsequent runs reuse it via the

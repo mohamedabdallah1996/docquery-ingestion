@@ -1,6 +1,7 @@
-"""Boundary to the OCR backend -- currently llama.cpp serving GLM-OCR
-(docquery/services/ocr). This Protocol is what lets the backend be swapped
-later (RunPod, Triton, ...) without touching the ingestor that calls it.
+"""Boundary to the OCR backend -- currently llama.cpp serving GLM-OCR,
+run locally via this repo's own Dockerfile/docker-compose.yml. This
+Protocol is what lets the backend be swapped later (RunPod, Triton, ...)
+without touching the ingestor that calls it.
 """
 
 from __future__ import annotations
