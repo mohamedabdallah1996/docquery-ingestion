@@ -28,6 +28,7 @@ def build_ingestor(config: dict[str, Any], *, ocr_service_url: str) -> GLMOCRIng
         prompt=parsed.prompt,
         temperature=parsed.temperature,
         top_k=parsed.top_k,
+        max_tokens=parsed.max_tokens,
         request_timeout_s=parsed.request_timeout_s,
         retry_max_attempts=parsed.retry_max_attempts,
         retry_backoff_seconds=parsed.retry_backoff_seconds,

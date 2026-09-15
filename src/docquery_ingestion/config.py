@@ -26,8 +26,11 @@ class GLMOCRConfig(IngestionConfig):
     prompt: str = "OCR"
     temperature: float = 0.1
     top_k: int = 1
+    max_tokens: int = 2048  # caps a single page's generation -- without this,
+    # a response that never emits an end-of-sequence token runs away instead
+    # of failing fast
     render_dpi: int = 200
-    request_timeout_s: float = 60.0  # per-page OCR call timeout
+    request_timeout_s: float = 120.0  # per-page OCR call timeout
     retry_max_attempts: int = 3
     retry_backoff_seconds: float = 2.0
     batch_size: int = 1  # pages OCR'd concurrently within one document

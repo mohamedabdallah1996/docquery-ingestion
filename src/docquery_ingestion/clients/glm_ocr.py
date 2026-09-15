@@ -66,7 +66,8 @@ class LlamaCppOCRClient:
         prompt: str = "OCR",
         temperature: float = 0.1,
         top_k: int = 1,
-        request_timeout_s: float = 60.0,
+        max_tokens: int = 2048,
+        request_timeout_s: float = 120.0,
         retry_max_attempts: int = 3,
         retry_backoff_seconds: float = 2.0,
         transport: httpx.AsyncBaseTransport | None = None,
@@ -76,6 +77,7 @@ class LlamaCppOCRClient:
         self._prompt = prompt
         self._temperature = temperature
         self._top_k = top_k
+        self._max_tokens = max_tokens
         self._retrying = AsyncRetrying(
             retry=retry_if_exception(_is_retryable_exception),
             stop=stop_after_attempt(retry_max_attempts),
@@ -129,8 +131,9 @@ class LlamaCppOCRClient:
         exception = outcome.exception() if outcome is not None else None
 
         logger.warning(
-            "OCR request failed (attempt {attempt}), retrying: {exception}",
+            "OCR request failed (attempt {attempt}), retrying: {exception_type}: {exception}",
             attempt=retry_state.attempt_number,
+            exception_type=type(exception).__name__,
             exception=exception,
         )
 
@@ -147,15 +150,16 @@ class LlamaCppOCRClient:
                 image_bytes,
             )
         except _PAGE_FAILURE as exc:
+            error_message = f"{type(exc).__name__}: {exc}"
             logger.error(
-                "OCR failed for page {page}: {exception}",
+                "OCR failed for page {page}: {error}",
                 page=page_number,
-                exception=exc,
+                error=error_message,
             )
             return PageOCRResult(
                 page_number=page_number,
                 markdown="",
-                error=str(exc),
+                error=error_message,
             )
 
         return PageOCRResult(
@@ -200,6 +204,7 @@ class LlamaCppOCRClient:
             ],
             "temperature": self._temperature,
             "top_k": self._top_k,
+            "max_tokens": self._max_tokens,
         }
 
     @staticmethod
@@ -220,23 +225,26 @@ class LlamaCppOCRClient:
 if __name__ == "__main__":
     import asyncio
     import sys
+    from pathlib import Path
 
     from docquery_ingestion.utils.rendering import render_page
 
+    _REPO_ROOT = Path(__file__).resolve().parents[3]
+    _DEFAULT_PDF_PATH = _REPO_ROOT / "assets" / "test_doc.pdf"
+
     async def main() -> None:
-        if len(sys.argv) not in (3, 4):
+        if len(sys.argv) not in (2, 3, 4):
             print(
                 "Usage: python -m docquery_ingestion.clients.glm_ocr "
-                "<service_url> <pdf_path> [page_number]"
+                f"<service_url> [pdf_path={_DEFAULT_PDF_PATH}] [page_number]"
             )
             sys.exit(1)
 
         service_url = sys.argv[1]
-        pdf_path = sys.argv[2]
-        page_number = int(sys.argv[3]) if len(sys.argv) == 4 else 1
+        pdf_path = Path(sys.argv[2]) if len(sys.argv) >= 3 else _DEFAULT_PDF_PATH
+        page_number = int(sys.argv[3]) if len(sys.argv) == 4 else 2
 
-        with open(pdf_path, "rb") as f:
-            pdf_bytes = f.read()
+        pdf_bytes = pdf_path.read_bytes()
         image_bytes = render_page(pdf_bytes, page_number - 1, dpi=200)
 
         async with LlamaCppOCRClient(service_url) as ocr_client:
