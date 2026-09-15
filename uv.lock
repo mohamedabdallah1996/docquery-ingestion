@@ -113,7 +113,7 @@ wheels = [
 [[package]]
 name = "docquery-core"
 version = "0.1.0"
-source = { git = "https://github.com/mohamedabdallah1996/docquery-core#7e6b10ba55e7aab1703558d0de5e00de7761c773" }
+source = { git = "https://github.com/mohamedabdallah1996/docquery-core#0ab7b4e75c9b6daf7003462077496f0636710111" }
 dependencies = [
     { name = "pydantic" },
 ]
